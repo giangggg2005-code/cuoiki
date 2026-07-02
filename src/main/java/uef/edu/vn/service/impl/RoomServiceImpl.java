@@ -80,6 +80,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean createRoom(Room room) {
         if (room == null) {
             throw new RoomException("Lỗi: Dữ liệu phòng chiếu cần tạo không được null.");
@@ -100,8 +101,26 @@ public class RoomServiceImpl implements RoomService {
                 throw new RoomException("Tên phòng chiếu '" + room.getRoomName() + "' đã tồn tại! Vui lòng chọn tên khác.");
             }
 
-            // Tiến hành gọi hàm Repository lưu vào DB ở đây...
             roomRepo.save(room);
+
+            if (room.getId_Room() <= 0) {
+                throw new RoomException("Lỗi hệ thống: Không lấy được mã phòng chiếu sau khi tạo mới!");
+            }
+
+            // Logic thay thế TRIGGER After_Room_Insert: tự sinh ghế A1, A2, B1...
+            for (int r = 1; r <= room.getTotalRows(); r++) {
+                for (int c = 1; c <= room.getTotalCols(); c++) {
+                    Seat newSeat = new Seat();
+                    newSeat.setRoomId(room.getId_Room());
+                    newSeat.setRowPos(r);
+                    newSeat.setColPos(c);
+                    newSeat.setStatus("Available");
+                    char rowChar = (char) ('A' + (r - 1));
+                    newSeat.setSeatName(String.valueOf(rowChar) + c);
+                    seatRepo.insertSeat(newSeat);
+                }
+            }
+
             return true;
 
         } catch (DataAccessException e) {

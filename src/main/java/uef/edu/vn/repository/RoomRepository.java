@@ -1,13 +1,17 @@
 package uef.edu.vn.repository;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import uef.edu.vn.model.Room;
@@ -51,7 +55,22 @@ public class RoomRepository {
 
     public void save(Room r) {
         String sql = "INSERT INTO `Room` (roomName, totalRows, totalCols, status, roomType, roomPrice) VALUES (?, ?, ?, ?, ?, ?)";
-        jdbcTemplate.update(sql, r.getRoomName(), r.getTotalRows(), r.getTotalCols(), r.getStatus(), r.getRoomType(), r.getRoomPrice());
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            ps.setString(1, r.getRoomName());
+            ps.setInt(2, r.getTotalRows());
+            ps.setInt(3, r.getTotalCols());
+            ps.setString(4, r.getStatus());
+            ps.setString(5, r.getRoomType());
+            ps.setDouble(6, r.getRoomPrice());
+            return ps;
+        }, keyHolder);
+
+        Number generatedId = keyHolder.getKey();
+        if (generatedId != null) {
+            r.setId_Room(generatedId.intValue());
+        }
     }
 
    /**
